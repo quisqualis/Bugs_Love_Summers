@@ -10,5 +10,6 @@ This exploration will get the raw data from publically available repositories su
 Data Questions:
 
 •	Are their global trends in the increase in the vector borne disease?
+
 •	Are vector borne diseases becoming more prevalent with global warming?
 
