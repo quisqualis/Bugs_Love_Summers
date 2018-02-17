@@ -7,7 +7,8 @@ Since most vectors prefer warmer temperatures, it is likely that increasing peri
 
 This exploration will get the raw data from publically available repositories such as Centers for Disease Control and Prevention (CDC), National Center for Emerging and Zoonotic Infectious Diseases (NCEZID), Division of Vector-Borne Diseases (DVBD), National Aeronautics and Space Administration (NASA) , National Oceanic and Atmospheric Administration (NOAA) and World Health Organization (WHO).
 
-Data Question
+Data Questions:
+
 •	Are their global trends in the increase in the vector borne disease?
 •	Are vector borne diseases becoming more prevalent with global warming?
 
