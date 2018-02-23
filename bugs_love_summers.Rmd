@@ -61,6 +61,42 @@ head(mosquito, n=5)
 
 ```
 
+```{r}
+heating_cooling_degree_days <- read_csv("data/Heating_and_Cooling_Degree_Days_EPA.csv", 
+    col_names = c("year","heating_days","cooling_days"), skip = 7)
+```
+
+```{r}
+GISS <- read_csv("data/Global-mean monthly_seasonal_and annual means_1880-present_GISS.csv", 
+    skip = 2)
+
+names(GISS)[names(GISS) == "J-D"] <- "Jan_Dec"
+names(GISS)[names(GISS) == "D-N"] <- "Dec_Nov"
+names(GISS)
+```
+
+```{r}
+
+ggplot(data = heating_cooling_degree_days,
+       mapping = aes(x=year, y=cooling_days)) +
+  geom_point(color= "red", shape = 1, alpha = 0.5) +
+  geom_smooth(color="red") +
+  theme_bw()
+  
+```
+
+```{r}
+ggplot(data = heating_cooling_degree_days,
+       mapping = aes(x=year, y=heating_days)) +
+  geom_point(color = "blue", shape = 1, alpha = 0.5) +
+  geom_smooth(color="blue") +
+  theme_bw()
+```
+
+```{r}
+
+```
+
 ```{r echo=FALSE}
 mosquito %>% 
   filter(country_id == "USA") %>% 
@@ -73,5 +109,12 @@ mosquito %>%
   filter(country == "India") %>% 
   ggplot(aes(x=year, fill=bug)) +
     geom_histogram(stat = "bin",  position = "stack")
+```
+
+```{r}
+ggplot(data = GISS, mapping = aes(x=Year, y=Jan_Dec)) +
+  geom_point(shape = 1, alpha = 0.5) +
+  geom_smooth(color = "black") +
+  theme_bw()
 ```
 

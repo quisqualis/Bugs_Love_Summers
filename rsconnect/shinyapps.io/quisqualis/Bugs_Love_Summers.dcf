@@ -1,0 +1,13 @@
+name: Bugs_Love_Summers
+title: Bugs_Love_Summers
+username:
+account: quisqualis
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 287264
+bundleId: 1235963
+url: https://quisqualis.shinyapps.io/Bugs_Love_Summers/
+when: 1519345638.78129
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: bugs_love_summers.html|bugs_love_summers.nb.html|bugs_love_summers.Rmd|README.md
