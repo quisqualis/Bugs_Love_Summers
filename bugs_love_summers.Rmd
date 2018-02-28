@@ -258,7 +258,7 @@ us_state_map <- map_data('state')
 # head(us_state_map)
 
 # extract state lyme data for 2016
-year <- "2006"
+year <- "2016"
 
 Lyme_map_data <-  Lyme_State %>% 
   select(region, cases = year) %>% 
@@ -270,10 +270,15 @@ Lyme_map_data <-
 
 # plot
 ggplot(Lyme_map_data, aes(x=long, y=lat, group=group, fill=cases)) +
-  scale_fill_gradientn("",colours=brewer.pal(n=4, "YlOrRd"))+
+  scale_fill_gradientn("",colours=brewer.pal(n=4, "YlOrRd"),na.value = "transparent")+
   geom_polygon()+coord_map()+
-  labs(title=paste(year,"Lyme Incidence"))+
-  theme_bw()
+  labs(title=paste(year,"Lyme Incidence"),fill = "incidence")+
+  theme(legend.title = element_text(size = 10),
+        legend.text = element_text(size = 12),
+        plot.title = element_text(size=16),
+        axis.title=element_text(size=14,face="bold"),
+        axis.text.x = element_text(angle = 90, hjust = 1))
+  
 
 ```
 
