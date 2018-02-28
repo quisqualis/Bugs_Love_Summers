@@ -8,10 +8,30 @@ output:
 
 
 ```{r echo=FALSE}
+# data import libraries
 library(readr)
+library(readxl)
+
+# data wrangling libraries
+library(tidyr)
 library(dplyr)
+library(stringr)
+
+# plotting libraries
 library(ggplot2)
 
+# mapping libraries
+library(ggmap)
+library(maps)
+library(mapdata)
+
+
+
+```
+
+```{r}
+# load the dataset
+load(file = "data/data.RData")
 ```
 
 
@@ -20,6 +40,10 @@ library(ggplot2)
 mosquito <- read_csv("data/aegypti_albopictus.csv", 
     col_types = cols(VECTOR = col_factor(levels = c("Aedes aegypti", 
         "Aedes albopictus"))))
+
+Lyme <- read_csv("data/Lyme_ld-Case-Counts-by-County-00-16.csv")
+FIPS <- read_excel("data/US_FIPS_CountyCodes.xls")
+
 
 # view the file
 # head(mosquito, n=3)
@@ -116,5 +140,254 @@ ggplot(data = GISS, mapping = aes(x=Year, y=Jan_Dec)) +
   geom_point(shape = 1, alpha = 0.5) +
   geom_smooth(color = "black") +
   theme_bw()
+```
+
+```{r}
+# Change column names:
+{
+  colnames(FIPS)[which(colnames(FIPS) == 'FIPS Code')] <- 'FIPS'
+  colnames(FIPS)[which(colnames(FIPS) == 'County Name')] <- 'County'
+  
+  colnames(Lyme)[which(colnames(Lyme) == "Ctyname")] <- "County"
+  colnames(Lyme)[which(colnames(Lyme) == "Stname")] <- "State"
+}
+
+# Remove County from counites in Lyme df
+Lyme$County <- str_replace_all(Lyme$County," County", "")
+
+# isolate county code 999 as states
+{
+  Lyme_state <- Lyme %>% 
+    filter(CTYCODE == 999) %>% 
+    as.data.frame()
+}
+
+# isolate counties from Lyme data:
+{
+  Lyme_counties <- Lyme %>% 
+    filter(CTYCODE != 999) %>% 
+    as.data.frame()
+}
+
+{
+# modify the CTYCODE to have 3 zeroes
+Lyme_counties$CTYCODE <- str_pad(Lyme_counties$CTYCODE, 3, pad = "0")
+
+# modify the STCODE to have 2 zeoroes
+Lyme_counties$STCODE <- str_pad(Lyme_counties$STCODE, 2, pad = "0")
+
+# merge columns
+Lyme_counties <- Lyme_counties %>%
+  unite(FIPS, c("STCODE","CTYCODE"), sep = "", remove = FALSE)
+}
+```
+
+```{r}
+# Find data different between two county rows
+Lyme_counties$County[!FIPS$County%in%Lyme_counties$County]
+```
+
+```{r}
+# Isolate counties from map_data
+counties <- map_data("county") 
+
+# Isolate Lyme incidence data for 2016
+Lyme_counties_2016 <- Lyme_counties %>% 
+    select(State, County, FIPS, Cases2016)
+
+# rename to match with county map file
+names(Lyme_counties_2016) <- c("region", "subregion", "FIPS", "Cases2016")
+  
+# change to lower case
+Lyme_counties_2016$region <-  tolower(Lyme_counties_2016$region)
+Lyme_counties_2016$subregion <-  tolower(Lyme_counties_2016$subregion)
+  
+# merge datasets
+lyme_2016_map_data <- inner_join(counties, Lyme_counties_2016, by = c("region", "subregion"))
+
+# # custom ggplot theme to drop the axes and ticks but leave the guides and legends
+#   ditch_the_axes <- theme(
+#     axis.text = element_blank(),
+#     axis.line = element_blank(),
+#     axis.ticks = element_blank(),
+#     panel.border = element_blank(),
+#     panel.grid = element_blank(),
+#     axis.title = element_blank()
+#   )
+  
+# test counties map
+
+base_county_map <- ggplot(data = Lyme_counties_2016) + 
+    geom_polygon(aes(x = long, y = lat, group = group), fill = "white",color = "gray") + 
+    coord_fixed(1.3) +
+    guides(fill=FALSE)
+
+lyme_2016_map <- base_county_map + 
+    geom_polygon(data = Lyme_counties_2016, aes(fill = Cases2016)) +
+    geom_polygon(fill = NA) +
+    theme_bw()
+
+lyme_2016_map
+
+# + ditch_the_axes
+  
+```
+
+```{r}
+require(maps)
+require(ggplot2)
+library(readr)
+library(dplyr)
+library(RColorBrewer)
+
+# read the incidence rate file:
+Lyme_State <- read_delim("data/Lyme_incidence_rate_State.txt", 
+                         "\t", escape_double = FALSE, 
+                         col_types = cols(`2011` = col_double(),
+                                          `2012` = col_double()), 
+                         trim_ws = TRUE)
+
+# delete the last row
+Lyme_State <- Lyme_State[-nrow(Lyme_State),] 
+# change state to region
+names(Lyme_State)[1]<-"region"
+# View(Lyme_State)
+
+# extract state map data
+us_state_map <- map_data('state')
+# head(us_state_map)
+
+# extract state lyme data for 2016
+year <- "2006"
+
+Lyme_map_data <-  Lyme_State %>% 
+  select(region, cases = year) %>% 
+  mutate(region = tolower(region))
+
+# merge datasets 
+Lyme_map_data <- 
+  merge(us_state_map, Lyme_map_data, by='region', all=T)
+
+# plot
+ggplot(Lyme_map_data, aes(x=long, y=lat, group=group, fill=cases)) +
+  scale_fill_gradientn("",colours=brewer.pal(n=4, "YlOrRd"))+
+  geom_polygon()+coord_map()+
+  labs(title=paste(year,"Lyme Incidence"))+
+  theme_bw()
+
+```
+
+```{r}
+# trying a for loop
+
+for (year in c("2006","2010","2015")){
+  Lyme_map_data <-  Lyme_State %>% 
+    select(region, cases = year) %>% 
+    mutate(region = tolower(region))
+  
+  Lyme_map_data <- 
+    merge(us_state_map, Lyme_map_data, by='region', all=T)
+  
+  gg <- ggplot(Lyme_map_data, aes(x=long, y=lat, group=group, fill=cases)) +
+    scale_fill_gradientn("",colours=brewer.pal(n=4, "YlOrRd"))+
+    geom_polygon()+coord_map()+
+    labs(title=paste(year,"Lyme Incidence"))+
+    theme_bw()
+  
+}
+```
+
+```{r}
+library(readr)
+library(readxl)
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(ggplot2)
+library(ggmap)
+library(maps)
+library(mapdata)
+
+file1 <- "data/Lyme_ld-Case-Counts-by-County-00-16.csv"
+file2 <- "data/US_FIPS_CountyCodes.xls"
+Lyme <- read_csv(file1)
+FIPS <- read_excel(file2)
+
+# Change column names:
+{
+  colnames(FIPS)[which(colnames(FIPS) == 'FIPS Code')] <- 'FIPS'
+  colnames(FIPS)[which(colnames(FIPS) == 'County Name')] <- 'County'
+  colnames(Lyme)[which(colnames(Lyme) == "Ctyname")] <- "County"
+  colnames(Lyme)[which(colnames(Lyme) == "Stname")] <- "State"
+}
+# Remove County from counites in Lyme df
+Lyme$County <- str_replace_all(Lyme$County," County", "")
+
+# isolate counties from Lyme data:
+{
+  Lyme_counties <- Lyme %>%
+    filter(CTYCODE != 999) %>%
+    as.data.frame()
+}
+
+# pad required zeroes for padding up 
+Lyme_counties$CTYCODE <- str_pad(Lyme_counties$CTYCODE, 3, pad = "0")
+
+# merge columns
+Lyme_counties <- Lyme_counties %>%
+  unite(FIPS, c("STCODE","CTYCODE"), sep = "", remove = FALSE)
+
+Lyme_counties$FIPS <- as.numeric(Lyme_counties$FIPS)
+
+# extract data to plot
+Lyme_counties_2016 <- Lyme_counties %>%
+  select(State, County, FIPS, Cases2016)
+
+# rename to match with county map file
+names(Lyme_counties_2016) <- c("region", "subregion", "FIPS", "Cases2016")
+
+# change to lower case
+Lyme_counties_2016$region <-  tolower(Lyme_counties_2016$region)
+Lyme_counties_2016$subregion <-  tolower(Lyme_counties_2016$subregion)
+
+# ----
+# mapping attempt 2
+library(rgdal)
+library(data.table)
+
+US.counties <- readOGR(dsn="data/gz_2010_us_050_00_5m",layer="gz_2010_us_050_00_5m")
+
+#leave out AK, HI, and PR (state FIPS: 02, 15, and 72)
+US.counties <- US.counties[!(US.counties$STATE %in% c("02","15","72")),]
+county.data <- US.counties@data
+county.data <- cbind(id=rownames(county.data),county.data)
+county.data <- data.table(county.data)
+county.data[,FIPS:=paste0(STATE,COUNTY)] # this is the state + county FIPS code
+setkey(county.data,FIPS)
+
+Lyme_counties_2016$FIPS <- as.character(Lyme_counties_2016$FIPS)
+Lyme.data <- data.table(Lyme_counties_2016)
+setkey(Lyme.data,FIPS)
+
+county.data[Lyme.data,cases:=Cases2016]
+map.df <- data.table(fortify(US.counties))
+
+setkey(map.df,id)
+setkey(county.data,id)
+
+map.df[county.data,cases:=cases]
+
+library(RColorBrewer)
+ggplot(map.df, aes(x=long, y=lat, group=group, fill=cases)) +
+  scale_fill_gradientn(colours = rev(heat.colors(5, alpha=1)), 
+                       na.value = "lightgreen", trans = "log10")+
+  geom_polygon()+coord_map()+
+  labs(title="2016 Lyme cases",x="",y="")+
+  theme_bw()
+# -----
+
+```
+
+
 ```
 
